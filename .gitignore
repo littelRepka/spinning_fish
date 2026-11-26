@@ -1,6 +1,7 @@
 /build
 /.vscode
-/legasi
+/legacy
 AGENTS.md
 GEMINI.md
 /src/build
+.gitignore

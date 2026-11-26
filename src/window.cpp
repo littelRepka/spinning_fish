@@ -32,6 +32,8 @@ bool DesktopRat::Create(HINSTANCE hInstance, int nCmdShow) {
     int screenH = GetSystemMetrics(SM_CYSCREEN);
     posX_ = static_cast<float>((screenW - SPRITE_W) / 2);
     posY_ = static_cast<float>((screenH - SPRITE_H) / 2);
+    BASE_Y = screenH - 155;
+    BASE_X = screenW -130;
 
     DWORD exStyle = WS_EX_LAYERED
                   | WS_EX_TRANSPARENT
@@ -56,6 +58,8 @@ bool DesktopRat::Create(HINSTANCE hInstance, int nCmdShow) {
 
     // --- Этап 4: таймер физики ---
     SetTimer(hwnd_, TIMER_MOVE_ID, TIMER_MOVE_MS, nullptr);
+
+    SetTimer(hwnd_ , TIMER_LONG_ID, TIMER_LONG_MS, nullptr );
 
     // --- Этап 5: иконка в трее ---
     if (!AddTrayIcon()) {
@@ -192,7 +196,8 @@ void DesktopRat::DrawCurrentFrame(HDC hdc) {
 //  ЭТАП 4 — Физика
 // ============================================================
 void DesktopRat::UpdatePhysics() {
-    if (paused_move_) {
+    if(send_base_mode_) return;
+    if (paused_move_hard_ && paused_move_) {
         SetWindowPos(hwnd_, HWND_TOPMOST,
                  static_cast<int>(BASE_X), static_cast<int>(BASE_Y),
                  0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOREDRAW);
@@ -295,12 +300,15 @@ void DesktopRat::ShowTrayMenu() {
     }
 
     AppendMenu(hMenu, MF_SEPARATOR, 0, nullptr);
-    if(paused_move_){
+    if(paused_move_hard_){
         AppendMenu(hMenu, MF_STRING, IDM_POSIH, L"Летать");
     } else{
         AppendMenu(hMenu, MF_STRING, IDM_POSIH, L"В угол");
     }
-    
+
+    AppendMenu(hMenu, MF_SEPARATOR, 0, nullptr);
+    AppendMenu(hMenu, MF_STRING, IDM_BASE, L"Место");
+
     AppendMenu(hMenu, MF_SEPARATOR, 0, nullptr);
     AppendMenu(hMenu, MF_STRING, IDM_EXIT, L"Выход");
     
@@ -325,7 +333,7 @@ void DesktopRat::ShowTrayMenu() {
 // ============================================================
 LRESULT CALLBACK DesktopRat::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     auto* self = reinterpret_cast<DesktopRat*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-
+    DWORD style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
     switch (msg) {
 
     case WM_CREATE: {
@@ -363,6 +371,29 @@ LRESULT CALLBACK DesktopRat::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
             }
         } else if (wParam == TIMER_MOVE_ID) {
             self->UpdatePhysics();
+        }else if (wParam = TIMER_LONG_ID){
+            // inactiviti
+            if(GetLastInputInfo(&self->last_act_)){
+                auto time = GetTickCount() - self->last_act_.dwTime;
+                if(time >= TIME_INACTIVE){
+                    self->paused_move_ = false;
+                }else{
+                    self->paused_move_ = true;
+                }
+            }
+            //full screen block
+            if(SUCCEEDED(SHQueryUserNotificationState(&self->state)) && 
+            (self->state == QUNS_NOT_PRESENT || self->state == QUNS_RUNNING_D3D_FULL_SCREEN 
+                ||  self->state == QUNS_BUSY)){
+                    ShowWindow(hwnd, SW_HIDE);
+                    self->paused_anim_ =true;
+                    self->paused_move_ =true;
+                }else{
+                   // ShowWindow(hwnd, SW_SHOW);
+                   // self->paused_anim_ =false;
+                   // self->paused_move_ =true;
+                }
+
         }
         return 0;
     }
@@ -407,7 +438,18 @@ LRESULT CALLBACK DesktopRat::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
             break;
         
         case IDM_POSIH:
-            self->paused_move_ = !self->paused_move_;
+            self->paused_move_hard_ = !self->paused_move_hard_;
+            break;
+        case IDM_BASE:
+            self->send_base_mode_ = true;
+            //self->paused_anim_ = true;
+            self->paused_move_ = true;
+            self->paused_move_hard_ = true;
+
+            style &= ~WS_EX_TRANSPARENT;
+            SetWindowLongPtr(hwnd, GWL_EXSTYLE , style);
+            SetWindowPos(hwnd , nullptr , 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |SWP_NOACTIVATE | SWP_FRAMECHANGED);
+            
             break;
         case IDM_EXIT:
             DestroyWindow(hwnd);
@@ -415,12 +457,34 @@ LRESULT CALLBACK DesktopRat::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         }
         return 0;
     }
+    case WM_LBUTTONDOWN:
+    if ( self->send_base_mode_) { // таскание
+        ReleaseCapture();
+        SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+
+        
+        if(GetWindowRect(hwnd , &self->fish_win_)){
+            self->BASE_X = self->fish_win_.left;
+            self->BASE_Y = self->fish_win_.top;
+        }
+
+        self->send_base_mode_ =false;
+        self->paused_anim_ = false;
+            
+        //DWORD style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+        style |= WS_EX_TRANSPARENT;
+        SetWindowLongPtr(hwnd, GWL_EXSTYLE , style);
+        SetWindowPos(hwnd , nullptr , 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |SWP_NOACTIVATE | SWP_FRAMECHANGED);
+            
+    }
+    return 0;
 
     case WM_DESTROY: {
         if (self) {
             KillTimer(hwnd, TIMER_ANIM_ID);
             KillTimer(hwnd, TIMER_MOVE_ID);
-            self->RemoveTrayIcon();   // ← Этап 5: удаляем иконку из трея
+            KillTimer(hwnd, TIMER_LONG_ID);
+            self->RemoveTrayIcon();   
             self->FreeFrames();
         }
         PostQuitMessage(0);
