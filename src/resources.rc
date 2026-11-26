@@ -1,0 +1,8 @@
+#include "resources.h"
+FISH_FRAME_0 RCDATA "resources/sprites/ezgif-frame-001.png"
+FISH_FRAME_1 RCDATA "resources/sprites/ezgif-frame-002.png"
+FISH_FRAME_2 RCDATA "resources/sprites/ezgif-frame-003.png"
+FISH_FRAME_3 RCDATA "resources/sprites/ezgif-frame-004.png"
+FISH_FRAME_4 RCDATA "resources/sprites/ezgif-frame-005.png"
+FISH_FRAME_5 RCDATA "resources/sprites/ezgif-frame-006.png"
+TRAY_ICON ICON  "resources/fish_icon.ico"

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(desktop-rat LANGUAGES CXX)
+project(spining-fish LANGUAGES CXX RC)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,18 +9,20 @@ add_definitions(-DUNICODE -D_UNICODE)
 # Исходники
 file(GLOB SOURCES "src/*.cpp")
 file(GLOB HEADERS "src/*.h")
+file(GLOB RESOURCE "src/*.rc")
 
 # Опция: с консолью (отладка) или чистый GUI (финальный)
 option(BUILD_CONSOLE "Build as console application for debugging" OFF)
 
 if(BUILD_CONSOLE)
-    add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+    add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${RESOURCE})
 else()
-    add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS})
+    add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS} ${RESOURCE})
 endif()
 
-# Include-пути: src/ и libs/ (там stb_image.h)
+# Include-пути: корень (для .rc), src/ и libs/ (там stb_image.h)
 target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/libs
 )

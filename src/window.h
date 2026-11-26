@@ -55,7 +55,7 @@ private:
     std::vector<Frame> walkFrames_;
     std::vector<Frame> idleFrames_;
 
-    bool LoadFrame(const std::string& path, Frame& out);
+    bool LoadFrame(const void* ptr, int size , Frame& out);
     bool LoadSprites(const std::string& dir);
     void FreeFrames();
 

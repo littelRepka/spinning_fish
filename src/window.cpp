@@ -1,5 +1,5 @@
 #include "window.h"
-
+#include"resources.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 //#include<iostream>
@@ -18,11 +18,11 @@ bool DesktopRat::Create(HINSTANCE hInstance, int nCmdShow) {
     wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
     if (!RegisterClassEx(&wc)) return false;
 
-    // --- Этап 2: спрайты ---
+    // --- Этап 2: спрайты --
+    
     if (!LoadSprites("resources/sprites")) {
         MessageBoxA(nullptr,
-            "Не удалось загрузить спрайты из resources/sprites/\n"
-            "Убедитесь, что папка есть рядом с exe.",
+            " NOT LOADED exe.",
             "Desktop Rat", MB_ICONERROR);
         return false;
     }
@@ -80,11 +80,13 @@ void DesktopRat::RunMessageLoop() {
 }
 
 // ============================================================
-//  ЭТАП 2 — Загрузка спрайтов
+//  ЭТАП 2 — Загрузка спрайтов const std::string& path
 // ============================================================
-bool DesktopRat::LoadFrame(const std::string& path, Frame& out) {
+bool DesktopRat::LoadFrame(const void* ptr, int size , Frame& out) {
     int w, h, ch;
-    unsigned char* data = stbi_load(path.c_str(), &w, &h, &ch, 4);
+    unsigned char* data = stbi_load_from_memory(static_cast<const stbi_uc*> (ptr) , 
+    size , &w, &h, &ch, 4);
+    //unsigned char* data = stbi_load(path.c_str(), &w, &h, &ch, 4);
     if (!data) return false;
 
     BITMAPINFO bmi              = {};
@@ -122,6 +124,27 @@ bool DesktopRat::LoadFrame(const std::string& path, Frame& out) {
 }
 
 bool DesktopRat::LoadSprites(const std::string& dir) {
+    for (int i =0 ; i < IDR_FRAME_COUNT; i++){
+
+        HRSRC res = FindResourceW(nullptr, MAKEINTRESOURCEW(IDR_FRAME_FIRST + i), RT_RCDATA);
+        HGLOBAL data = LoadResource(nullptr, res);
+        const void* ptr = LockResource(data);
+        int size = SizeofResource(nullptr , res);
+
+        Frame f;
+        if (!LoadFrame(ptr ,size, f)); //return false;
+        walkFrames_.push_back(f);
+
+    }
+    /*
+    const char * t = "";
+    int s = walkFrames_.size();
+    t = std::to_string(s).c_str();
+    MessageBoxA(nullptr,
+            t,
+            "Desktop Rat", MB_ICONERROR);
+    
+    /*
     for (int i = 1; i <= 6; ++i) {
         Frame f;
         if (!LoadFrame(dir + "/ezgif-frame-00" + std::to_string(i) + ".png", f)) return false;
@@ -238,13 +261,15 @@ void DesktopRat::UpdatePhysics() {
 // ============================================================
 bool DesktopRat::AddTrayIcon() {
     // Загружаем иконку из файла рядом с exe
+    
     HICON hIcon = (HICON)LoadImage(
-        nullptr,
-        L"resources/tray_icon.ico",
+        GetModuleHandle(nullptr),
+        MAKEINTRESOURCE(TRAY_ICON),
         IMAGE_ICON,
-        16, 16,
-        LR_LOADFROMFILE
+        GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
+        LR_DEFAULTCOLOR
     );
+    
     if (!hIcon) {
         // Запасной вариант — стандартная системная иконка
         hIcon = LoadIcon(nullptr, IDI_APPLICATION);
