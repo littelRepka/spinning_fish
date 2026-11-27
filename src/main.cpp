@@ -1,5 +1,6 @@
-#include <windows.h>
-#include "window.h"
+//#include <windows.h>
+//#include "window.h"
+#include"controler.h"
 bool EnsureAutoStart() {
     HKEY hKey = nullptr;
     LSTATUS status = RegOpenKeyExW(
@@ -44,15 +45,15 @@ bool EnsureAutoStart() {
     return status == ERROR_SUCCESS;
 }
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
-    DesktopRat rat;
+    controler control;
 
-    if (!rat.Create(hInstance, nCmdShow)) {
+    if (!control.Create(hInstance)) {
         MessageBox(nullptr, L"Не удалось создать окно", L"Ошибка", MB_ICONERROR);
         return 1;
     }
     if(!EnsureAutoStart()){
         MessageBox(nullptr, L"Не удалось создать окно", L"Ошибка", MB_ICONERROR);
     }
-    rat.RunMessageLoop();
+    control.RunMessageLoop();
     return 0;
 }

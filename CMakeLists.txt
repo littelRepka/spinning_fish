@@ -36,6 +36,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ole32
     msimg32    # для TransparentBlt (если понадобится позже)
 )
+if(NOT MSVC)
+    target_link_options(${PROJECT_NAME} PRIVATE -static -static-libgcc -static-libstdc++)
+endif()
 
 # Копируем папку resources/ в каталог сборки после сборки
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

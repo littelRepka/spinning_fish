@@ -5,3 +5,5 @@ AGENTS.md
 GEMINI.md
 /src/build
 .gitignore
+window.h
+window.cpp

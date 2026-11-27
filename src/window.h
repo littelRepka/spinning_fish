@@ -63,6 +63,7 @@ private:
     int  curFrame_  = 0;
     bool isWalking_ = true;
     bool reverse = false;
+    int reves_count_ = 0;
 
     std::vector<Frame>* CurrentAnim();
     void AdvanceFrame();
@@ -79,6 +80,8 @@ private:
     bool  paused_anim_    = false; 
     bool  paused_move_ = true;
     bool  paused_move_hard_ = true;
+    bool  hidden_full_screen_ = false;
+    bool is_hidden_ = false;
 
     void UpdatePhysics();
 

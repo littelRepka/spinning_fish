@@ -80,8 +80,8 @@ void DesktopRat::RunMessageLoop() {
 }
 
 // ============================================================
-//  ЭТАП 2 — Загрузка спрайтов const std::string& path
-// ============================================================
+// Загрузка спрайтов const std::string& path
+
 bool DesktopRat::LoadFrame(const void* ptr, int size , Frame& out) {
     int w, h, ch;
     unsigned char* data = stbi_load_from_memory(static_cast<const stbi_uc*> (ptr) , 
@@ -136,13 +136,20 @@ bool DesktopRat::LoadSprites(const std::string& dir) {
         walkFrames_.push_back(f);
 
     }
-    /*
-    const char * t = "";
+    HRSRC res = FindResourceW(nullptr, MAKEINTRESOURCEW(CONFIG), RT_RCDATA);
+    HGLOBAL data = LoadResource(nullptr, res);
+    const void* ptr = LockResource(data);
+    int size = SizeofResource(nullptr , res);
+    
+    const int * t;
+    t = reinterpret_cast<const int*>(ptr);
     int s = walkFrames_.size();
-    t = std::to_string(s).c_str();
-    MessageBoxA(nullptr,
-            t,
-            "Desktop Rat", MB_ICONERROR);
+    BASE_X = *t;
+    BASE_Y = *(t+1);
+    //t = std::to_string(s).c_str();
+    //MessageBoxA(nullptr,
+      //      t,
+        //    "Desktop Rat", MB_ICONERROR);
     
     /*
     for (int i = 1; i <= 6; ++i) {
@@ -169,8 +176,8 @@ void DesktopRat::FreeFrames() {
 }
 
 // ============================================================
-//  ЭТАП 3 — Анимация
-// ============================================================
+//  Анимация
+
 std::vector<Frame>* DesktopRat::CurrentAnim() {
     return &walkFrames_;
     //return isWalking_ ? &walkFrames_ : &idleFrames_;
@@ -188,7 +195,14 @@ void DesktopRat::AdvanceFrame() {
         //curFrame_ = (curFrame_ + 1) % static_cast<int>(anim->size());
     }
     //std::cout << curFrame_;
-    if (curFrame_ == 0 || curFrame_ == (anim->size()-1)) reverse =!reverse;
+    if (curFrame_ == 0 || curFrame_ == (anim->size()-1)) {
+       reverse =!reverse;
+       reves_count_ ++; 
+    }
+    if(reves_count_ == 3){
+        facingLeft_ = !facingLeft_;
+        reves_count_ = 0;
+    }
     
 }
 
@@ -215,9 +229,7 @@ void DesktopRat::DrawCurrentFrame(HDC hdc) {
     DeleteDC(hdcMem);
 }
 
-// ============================================================
-//  ЭТАП 4 — Физика
-// ============================================================
+// Летание
 void DesktopRat::UpdatePhysics() {
     if(send_base_mode_) return;
     if (paused_move_hard_ && paused_move_) {
@@ -232,24 +244,32 @@ void DesktopRat::UpdatePhysics() {
     int originX = GetSystemMetrics(SM_XVIRTUALSCREEN);
     int originY = GetSystemMetrics(SM_YVIRTUALSCREEN);
 
-    float minX = static_cast<float>(originX);
+    float minX = static_cast<float>(originX );
     float maxX = static_cast<float>(originX + screenW - SPRITE_W);
-    float minY = static_cast<float>(originY);
+    float minY = static_cast<float>(originY );
     float maxY = static_cast<float>(originY + screenH - SPRITE_H);
 
-    posX_ += velX_;
-    posY_ += velY_;
+    if(GetWindowRect(hwnd_ , &fish_win_)){
+        posX_ = fish_win_.left + velX_;
+        posY_ = fish_win_.top + velY_;
+    }
+ 
 
     if (posX_ < minX) {
         posX_ = minX; velX_ = fabsf(velX_); facingLeft_ = false;
+       // posY_ = posY_-5; 
     } else if (posX_ > maxX) {
-        posX_ = maxX; velX_ = -fabsf(velX_); facingLeft_ = true;
+        posX_ = maxX; velX_ = -fabsf(velX_);
+       // posY_ = posY_+5; 
+         facingLeft_ = true;
     }
 
     if (posY_ < minY) {
         posY_ = minY; velY_ = fabsf(velY_);
+        //posX_ = posX_-5; 
     } else if (posY_ > maxY) {
         posY_ = maxY; velY_ = -fabsf(velY_);
+        //posX_ = posX_+5; 
     }
     SetWindowPos(hwnd_, HWND_TOPMOST,
                  static_cast<int>(posX_), static_cast<int>(posY_),
@@ -258,7 +278,7 @@ void DesktopRat::UpdatePhysics() {
 
 // ============================================================
 //  ЭТАП 5 — Системный трей
-// ============================================================
+
 bool DesktopRat::AddTrayIcon() {
     // Загружаем иконку из файла рядом с exe
     
@@ -411,9 +431,14 @@ LRESULT CALLBACK DesktopRat::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
             (self->state == QUNS_NOT_PRESENT || self->state == QUNS_RUNNING_D3D_FULL_SCREEN 
                 ||  self->state == QUNS_BUSY)){
                     ShowWindow(hwnd, SW_HIDE);
-                    self->paused_anim_ =true;
-                    self->paused_move_ =true;
+                    self->hidden_full_screen_ = true;
+                   // self->paused_anim_ =true;
+                    //self->paused_move_ =true;
                 }else{
+                    self->hidden_full_screen_ = false;
+                    if(!self->is_hidden_){
+                        ShowWindow(hwnd, SW_SHOW);
+                    }
                    // ShowWindow(hwnd, SW_SHOW);
                    // self->paused_anim_ =false;
                    // self->paused_move_ =true;
@@ -456,10 +481,12 @@ LRESULT CALLBACK DesktopRat::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 
         case IDM_SHOW:
             ShowWindow(hwnd, SW_SHOW);
+            self->is_hidden_ = false;
             break;
 
         case IDM_HIDE:
             ShowWindow(hwnd, SW_HIDE);
+            self->is_hidden_ = true;
             break;
         
         case IDM_POSIH:

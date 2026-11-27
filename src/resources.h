@@ -9,3 +9,4 @@
 #define FISH_FRAME_5     106
 #define IDR_FRAME_COUNT 6
 #define TRAY_ICON 501
+#define CONFIG 601
